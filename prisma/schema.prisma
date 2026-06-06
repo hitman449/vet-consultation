@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          Role      @default(PATIENT)
+  image         String?
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  appointments  Appointment[]  @relation("PatientAppointments")
+  doctorProfile DoctorProfile?
+}
+
+model DoctorProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  specialization  String
+  experience      Int
+  consultationFee Float
+  bio             String?
+  available       Boolean  @default(true)
+  appointments    Appointment[] @relation("DoctorAppointments")
+  slots           TimeSlot[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model TimeSlot {
+  id          String        @id @default(cuid())
+  doctorId    String
+  doctor      DoctorProfile @relation(fields: [doctorId], references: [id])
+  date        DateTime
+  startTime   String
+  endTime     String
+  isBooked    Boolean       @default(false)
+  appointment Appointment?
+  createdAt   DateTime      @default(now())
+}
+
+model Appointment {
+  id          String            @id @default(cuid())
+  patientId   String
+  patient     User              @relation("PatientAppointments", fields: [patientId], references: [id])
+  doctorId    String
+  doctor      DoctorProfile     @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  slotId      String            @unique
+  slot        TimeSlot          @relation(fields: [slotId], references: [id])
+  status      AppointmentStatus @default(PENDING)
+  petName     String
+  petType     String
+  petAge      String
+  symptoms    String?
+  meetingLink String?
+  payment     Payment?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model Payment {
+  id                String      @id @default(cuid())
+  appointmentId     String      @unique
+  appointment       Appointment @relation(fields: [appointmentId], references: [id])
+  razorpayOrderId   String
+  razorpayPaymentId String?
+  amount            Float
+  currency          String      @default("INR")
+  status            String      @default("created")
+  createdAt         DateTime    @default(now())
+}
